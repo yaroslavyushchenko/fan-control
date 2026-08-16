@@ -1,0 +1,14 @@
+[Unit]
+Description=Fan control daemon (direct EC register writes)
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/fanctld
+Restart=on-failure
+RestartSec=2
+# Environment=FANCTLD_UID=1000
+# Environment=FANCTLD_GID=1000
+
+[Install]
+WantedBy=multi-user.target

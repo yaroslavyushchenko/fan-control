@@ -1,0 +1,54 @@
+.TH FANCTLD 8 "2026" "acer-predator-ph315-51-fan-control" "System Administration"
+.SH NAME
+fanctld \- fan control daemon for the Acer Predator PH315-51
+.SH SYNOPSIS
+.B fanctld
+.SH DESCRIPTION
+.B fanctld
+runs as root and writes the Acer Predator PH315-51 embedded
+controller's fan registers directly through
+.IR /sys/kernel/debug/ec/ec0/io ,
+which requires root and the
+.B ec_sys
+kernel module loaded with
+.B write_support=1
+(see
+.IR /usr/lib/modprobe.d/ec_sys.conf
+and
+.IR /usr/lib/modules-load.d/ec_sys.conf ).
+.PP
+It listens on the Unix socket
+.I /run/fanctld.sock
+for the newline-terminated commands \fBstatus\fR, \fBfull\fR and
+\fBauto\fR, and replies with a single line of JSON. The socket is
+created mode 0660 and owned by the UID/GID configured via the
+.B FANCTLD_UID
+and
+.B FANCTLD_GID
+environment variables (both default to 1000), so only that local user
+can connect \(em no client-side privilege is required or granted.
+.PP
+Intended to run under systemd; see the shipped
+.I fanctld.service
+unit. Use
+.B systemctl edit fanctld.service
+to override
+.B FANCTLD_UID
+/
+.B FANCTLD_GID
+if your desktop user isn't UID 1000.
+.SH WARNING
+The register offsets and values this daemon writes were observed
+specifically on the Acer Predator PH315-51 embedded controller. They
+are not known to be correct or safe on other hardware.
+.SH FILES
+.TP
+.I /run/fanctld.sock
+Control socket.
+.TP
+.I /sys/kernel/debug/ec/ec0/io
+Embedded controller register I/O, via the ec_sys kernel module.
+.SH SEE ALSO
+.BR fanctl (1)
+.SH AUTHOR
+Yaroslav Yushchenko

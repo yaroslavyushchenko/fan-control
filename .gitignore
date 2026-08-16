@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+
+# makepkg
+/src/
+/pkg/
+*.pkg.tar.*
+.SRCINFO
+
+# dpkg-buildpackage
+/debian/.debhelper/
+/debian/acer-predator-ph315-51-fan-control/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/*.substvars
+/debian/*.log

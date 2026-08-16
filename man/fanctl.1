@@ -1,0 +1,43 @@
+.TH FANCTL 1 "2026" "acer-predator-ph315-51-fan-control" "User Commands"
+.SH NAME
+fanctl \- control the Acer Predator PH315-51 fan mode
+.SH SYNOPSIS
+.B fanctl
+[\fIstatus\fR|\fIfull\fR|\fIauto\fR]
+.SH DESCRIPTION
+.B fanctl
+is an unprivileged client for
+.BR fanctld (8),
+a root daemon that writes the Acer Predator PH315-51 embedded
+controller's fan registers directly. It talks to the daemon over the
+Unix socket
+.IR /run/fanctld.sock ,
+which is restricted by filesystem permissions to one local user.
+.PP
+Without arguments,
+.B fanctl
+behaves as if
+.I status
+was given.
+.SH COMMANDS
+.TP
+.B status
+Print the daemon's current fan mode as JSON: \fB{"ok": true, "mode": "auto"}\fR.
+.TP
+.B full
+Force both fans to maximum speed.
+.TP
+.B auto
+Return fan control to the vendor's own curve.
+.SH EXIT STATUS
+.B fanctl
+exits 0 on success, 1 if the daemon could not be reached or returned
+an error.
+.SH FILES
+.TP
+.I /run/fanctld.sock
+The daemon's Unix socket.
+.SH SEE ALSO
+.BR fanctld (8)
+.SH AUTHOR
+Yaroslav Yushchenko

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+	echo "fanctld only accepts local connections from UID/GID 1000 by default."
+	echo "If that is not your UID, run 'systemctl edit fanctld.service' and set"
+	echo "Environment=FANCTLD_UID=... / FANCTLD_GID=... then restart the service."
+fi
+
+#DEBHELPER#
+
+exit 0
