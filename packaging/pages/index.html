@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fan-control</title>
+<style>
+  :root { color-scheme: light dark; --fg: #18181b; --muted: #52525b; --bg: #fafafa; --code: #f4f4f5; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f4f4f5; --muted: #a1a1aa; --bg: #09090b; --code: #18181b; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 3rem 1rem; }
+  p, li { color: var(--muted); }
+  pre { background: var(--code); padding: 1rem; overflow-x: auto; border-radius: 6px; }
+  code { font: 14px ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<main>
+<h1>fan-control @VERSION@</h1>
+<p>Manual fan control (<code>auto</code> / <code>full</code>) for the Acer Predator PH315-51 on Linux.
+Only for that model: the installer refuses to run on other hardware.</p>
+<pre><code>curl -fsSL https://yaroslavyushchenko.github.io/fan-control/install.sh | sh</code></pre>
+<p>Debian and Ubuntu get the signed APT repository, Arch-based systems the signed pacman
+repository, so updates arrive with your normal system upgrades.</p>
+<ul>
+  <li>APT: <code>deb [signed-by=/etc/apt/keyrings/fan-control.asc] https://yaroslavyushchenko.github.io/fan-control/apt stable main</code></li>
+  <li>pacman: <code>[fan-control]</code> with <code>Server = https://yaroslavyushchenko.github.io/fan-control/arch/$arch</code></li>
+  <li>Signing key: <a href="fan-control.asc">fan-control.asc</a></li>
+</ul>
+<p><a href="https://github.com/yaroslavyushchenko/fan-control">Source, docs and issues on GitHub</a></p>
+</main>
+</body>
+</html>
