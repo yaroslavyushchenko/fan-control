@@ -1,3 +1,9 @@
+acer-predator-ph315-51-fan-control (1.1.1) unstable; urgency=medium
+
+  * Fix building the APT repository during releases.
+
+ -- Yaroslav Yushchenko <yaroslav.yushchenko1@gmail.com>  Thu, 15 Oct 2026 22:12:30 +0000
+
 acer-predator-ph315-51-fan-control (1.1.0) unstable; urgency=medium
 
   * Grant access through a fanctl group and systemd socket activation

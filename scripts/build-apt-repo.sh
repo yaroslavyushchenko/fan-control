@@ -4,8 +4,9 @@
 set -eu
 
 debs=$1
-out=$2
 key=$3
+mkdir -p "$2"
+out=$(cd "$2" && pwd)
 dist=$out/dists/stable
 
 mkdir -p "$out/pool/main"

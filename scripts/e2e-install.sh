@@ -17,10 +17,11 @@ mkdir -m 700 "$GNUPGHOME"
 gpg --batch --quiet --passphrase '' --quick-gen-key "fan-control e2e <e2e@example.invalid>" ed25519 sign never
 key=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr/ { print $10; exit }')
 
-mkdir -p "$work/site"
+# Relative output paths, as the release workflow passes them.
+cd "$work"
 case $method in
-apt) "$root/scripts/build-apt-repo.sh" "$pkgs" "$work/site/apt" "$key" ;;
-pacman) "$root/scripts/build-pacman-repo.sh" "$pkgs" "$work/site/arch" "$key" ;;
+apt) "$root/scripts/build-apt-repo.sh" "$pkgs" site/apt "$key" ;;
+pacman) "$root/scripts/build-pacman-repo.sh" "$pkgs" site/arch "$key" ;;
 *)
 	echo "unknown method $method" >&2
 	exit 1
