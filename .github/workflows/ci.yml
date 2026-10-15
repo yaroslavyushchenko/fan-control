@@ -44,7 +44,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends debhelper lintian
+          sudo apt-get install -y --no-install-recommends build-essential debhelper lintian
       - name: Build
         run: dpkg-buildpackage -us -uc -b
       - name: Lintian
@@ -71,7 +71,7 @@ jobs:
         run: namcap packaging/arch/*.pkg.tar.zst
       - name: Install through install.sh and a signed pacman repo, then uninstall
         run: |
-          [ -d /etc/pacman.d/gnupg ] || pacman-key --init
+          pacman-key --init
           scripts/e2e-install.sh pacman packaging/arch
       - uses: actions/upload-artifact@v4
         with:

@@ -42,7 +42,7 @@ jobs:
       - name: Build
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends debhelper
+          sudo apt-get install -y --no-install-recommends build-essential debhelper
           dpkg-buildpackage -us -uc -b
           mkdir dist && mv ../*.deb dist/
       - uses: actions/upload-artifact@v4
