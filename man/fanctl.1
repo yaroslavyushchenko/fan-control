@@ -1,9 +1,12 @@
-.TH FANCTL 1 "2026" "acer-predator-ph315-51-fan-control" "User Commands"
+.TH FANCTL 1 "2026" "fan-control" "User Commands"
 .SH NAME
 fanctl \- control the Acer Predator PH315-51 fan mode
 .SH SYNOPSIS
 .B fanctl
 [\fIstatus\fR|\fIfull\fR|\fIauto\fR]
+.br
+.B fanctl
+.BR \-\-help | \-\-version
 .SH DESCRIPTION
 .B fanctl
 is an unprivileged client for
@@ -12,17 +15,26 @@ a root daemon that writes the Acer Predator PH315-51 embedded
 controller's fan registers directly. It talks to the daemon over the
 Unix socket
 .IR /run/fanctld.sock ,
-which is restricted by filesystem permissions to one local user.
+which members of the
+.B fanctl
+group may use. Add a user with
+.B usermod \-aG fanctl
+.IR user ,
+then log in again.
 .PP
 Without arguments,
 .B fanctl
 behaves as if
 .I status
-was given.
+was given. It always prints exactly one line of JSON to standard output,
+also on errors, so it can feed status bars or
+.BR jq (1).
 .SH COMMANDS
 .TP
 .B status
-Print the daemon's current fan mode as JSON: \fB{"ok": true, "mode": "auto"}\fR.
+Print the fan mode read back from the embedded controller:
+\fB{"ok": true, "mode": "auto"}\fR. The mode is \fBauto\fR, \fBfull\fR, or
+\fBunknown\fR if the registers hold values set by something else.
 .TP
 .B full
 Force both fans to maximum speed.
@@ -30,9 +42,26 @@ Force both fans to maximum speed.
 .B auto
 Return fan control to the vendor's own curve.
 .SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+The daemon answered with an error, or its reply could not be read.
+.TP
+.B 2
+The daemon could not be reached: it is not running, or the caller is not
+in the
 .B fanctl
-exits 0 on success, 1 if the daemon could not be reached or returned
-an error.
+group.
+.TP
+.B 64
+Invalid command line.
+.SH ENVIRONMENT
+.TP
+.B FANCTLD_SOCKET
+Socket path to connect to instead of
+.IR /run/fanctld.sock .
 .SH FILES
 .TP
 .I /run/fanctld.sock

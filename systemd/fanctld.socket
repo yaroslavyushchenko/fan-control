@@ -1,0 +1,13 @@
+[Unit]
+Description=Fan control daemon socket (Acer Predator PH315-51)
+Documentation=man:fanctld(8)
+
+[Socket]
+ListenStream=/run/fanctld.sock
+SocketUser=root
+SocketGroup=fanctl
+SocketMode=0660
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

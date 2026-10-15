@@ -1,42 +1,57 @@
-.TH FANCTLD 8 "2026" "acer-predator-ph315-51-fan-control" "System Administration"
+.TH FANCTLD 8 "2026" "fan-control" "System Administration"
 .SH NAME
 fanctld \- fan control daemon for the Acer Predator PH315-51
 .SH SYNOPSIS
 .B fanctld
+.RB [ \-\-force ]
+.br
+.B fanctld \-\-reset
+.RB [ \-\-force ]
+.br
+.B fanctld
+.BR \-\-help | \-\-version
 .SH DESCRIPTION
 .B fanctld
 runs as root and writes the Acer Predator PH315-51 embedded
 controller's fan registers directly through
-.IR /sys/kernel/debug/ec/ec0/io ,
-which requires root and the
+.IR /sys/kernel/debug/ec/ec0/io .
+That file is provided by the
 .B ec_sys
 kernel module loaded with
-.B write_support=1
-(see
-.IR /usr/lib/modprobe.d/ec_sys.conf
-and
-.IR /usr/lib/modules-load.d/ec_sys.conf ).
+.BR write_support=1 ;
+the shipped unit loads it before starting the daemon. Kernel lockdown,
+which is enabled under Secure Boot on many distributions, blocks these
+writes.
 .PP
-It listens on the Unix socket
+The daemon listens on
 .I /run/fanctld.sock
 for the newline-terminated commands \fBstatus\fR, \fBfull\fR and
-\fBauto\fR, and replies with a single line of JSON. The socket is
-created mode 0660 and owned by the UID/GID configured via the
-.B FANCTLD_UID
-and
-.B FANCTLD_GID
-environment variables (both default to 1000), so only that local user
-can connect \(em no client-side privilege is required or granted.
+\fBauto\fR, and replies with a single line of JSON. The mode it reports is
+read back from the embedded controller, not remembered.
 .PP
-Intended to run under systemd; see the shipped
-.I fanctld.service
-unit. Use
-.B systemctl edit fanctld.service
-to override
-.B FANCTLD_UID
-/
-.B FANCTLD_GID
-if your desktop user isn't UID 1000.
+Normally the socket comes from
+.IR fanctld.socket ,
+which creates it mode 0660, owned by root and the
+.B fanctl
+group, and starts the daemon on the first connection. Run standalone, the
+daemon creates the same socket itself.
+.PP
+When the daemon stops, it writes the \fBauto\fR mode back so the fans never
+stay at full speed. The unit also runs
+.B fanctld \-\-reset
+after every stop, including crashes.
+.PP
+The daemon refuses to start unless
+.I /sys/class/dmi/id/product_name
+names the PH315-51.
+.SH OPTIONS
+.TP
+.B \-\-reset
+Write the \fBauto\fR mode once and exit.
+.TP
+.B \-\-force
+Run on other models. The register map is unknown there and writing it
+may be unsafe. Also enabled by \fBFANCTLD_FORCE=1\fR.
 .SH WARNING
 The register offsets and values this daemon writes were observed
 specifically on the Acer Predator PH315-51 embedded controller. They
@@ -48,7 +63,13 @@ Control socket.
 .TP
 .I /sys/kernel/debug/ec/ec0/io
 Embedded controller register I/O, via the ec_sys kernel module.
+.TP
+.I /usr/lib/sysusers.d/fanctl.conf
+Creates the
+.B fanctl
+group.
 .SH SEE ALSO
-.BR fanctl (1)
+.BR fanctl (1),
+.BR systemd.socket (5)
 .SH AUTHOR
 Yaroslav Yushchenko
