@@ -2,18 +2,21 @@ Source: acer-predator-ph315-51-fan-control
 Section: admin
 Priority: optional
 Maintainer: Yaroslav Yushchenko <yaroslav.yushchenko1@gmail.com>
-Build-Depends: debhelper-compat (= 13)
+Build-Depends: debhelper-compat (= 13), python3
 Standards-Version: 4.6.2
-Homepage: https://github.com/yaroslavyushchenko/acer-predator-ph315-51-fan-control
+Homepage: https://github.com/yaroslavyushchenko/fan-control
+Vcs-Browser: https://github.com/yaroslavyushchenko/fan-control
+Vcs-Git: https://github.com/yaroslavyushchenko/fan-control.git
 Rules-Requires-Root: no
 
 Package: acer-predator-ph315-51-fan-control
 Architecture: all
-Depends: ${misc:Depends}, python3, systemd
+Depends: ${misc:Depends}, python3, systemd, kmod
 Description: manual fan control for the Acer Predator PH315-51
  fanctld is a root daemon that writes the embedded controller's fan
- registers directly, exposed to one local user over a Unix socket
- restricted by filesystem permissions. fanctl is the unprivileged CLI
- client (status/full/auto).
+ registers directly. Members of the fanctl group talk to it over a Unix
+ socket, so no sudo rule is needed. fanctl is the unprivileged CLI client
+ (status/full/auto) and prints one line of JSON.
  .
- Register offsets are specific to the Acer Predator PH315-51 EC.
+ Register offsets are specific to the Acer Predator PH315-51 EC; the
+ daemon refuses to start on other models.

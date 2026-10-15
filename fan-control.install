@@ -1,0 +1,13 @@
+post_install() {
+	echo '==> Start the socket:    systemctl enable --now fanctld.socket'
+	echo '==> Allow your user:     usermod -aG fanctl <user>  (then log in again)'
+}
+
+post_upgrade() {
+	systemctl try-restart fanctld.service >/dev/null 2>&1 || true
+}
+
+pre_remove() {
+	# Stopping the daemon puts the fans back on the vendor curve.
+	systemctl disable --now fanctld.socket fanctld.service >/dev/null 2>&1 || true
+}

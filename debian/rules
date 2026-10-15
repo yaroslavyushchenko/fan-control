@@ -1,3 +1,7 @@
 #!/usr/bin/make -f
 %:
 	dh $@
+
+override_dh_installsystemd:
+	dh_installsystemd fanctld.socket
+	dh_installsystemd --no-enable --no-start fanctld.service

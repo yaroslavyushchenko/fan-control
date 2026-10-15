@@ -2,11 +2,14 @@
 set -e
 
 if [ "$1" = "configure" ]; then
-	echo "fanctld only accepts local connections from UID/GID 1000 by default."
-	echo "If that is not your UID, run 'systemctl edit fanctld.service' and set"
-	echo "Environment=FANCTLD_UID=... / FANCTLD_GID=... then restart the service."
+	systemd-sysusers ${DPKG_ROOT:+--root="$DPKG_ROOT"} fanctl.conf
 fi
 
 #DEBHELPER#
+
+if [ "$1" = "configure" ] && [ -z "$2" ]; then
+	echo "fan-control: add yourself to the fanctl group to use fanctl:"
+	echo "    sudo usermod -aG fanctl \$USER   (then log out and back in)"
+fi
 
 exit 0
