@@ -1,14 +1,31 @@
 [Unit]
-Description=Fan control daemon (direct EC register writes)
-After=multi-user.target
+Description=Fan control daemon (direct EC register writes, Acer Predator PH315-51)
+Documentation=man:fanctld(8)
+Requires=fanctld.socket
+After=fanctld.socket sys-kernel-debug.mount
+ConditionPathExists=/sys/class/dmi/id/product_name
 
 [Service]
 Type=simple
+ExecStartPre=-/sbin/modprobe ec_sys write_support=1
 ExecStart=/usr/bin/fanctld
+# Backstop for crashes: put the fans back on the vendor curve whenever the
+# daemon stops, however it stopped.
+ExecStopPost=-/usr/bin/fanctld --reset
 Restart=on-failure
 RestartSec=2
-# Environment=FANCTLD_UID=1000
-# Environment=FANCTLD_GID=1000
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
 
 [Install]
-WantedBy=multi-user.target
+Also=fanctld.socket

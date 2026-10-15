@@ -1,0 +1,171 @@
+name: Release
+
+# Push a tag like v1.2.0 (matching VERSION and debian/changelog) to build the
+# packages, publish a GitHub Release, and rebuild the signed APT and pacman
+# repositories plus install.sh on GitHub Pages.
+#
+# Needs the secret REPO_SIGNING_KEY: an ASCII-armored GPG private key without
+# a passphrase. Pages must be set to deploy from GitHub Actions.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches VERSION and debian/changelog
+        run: scripts/check-version.sh "$GITHUB_REF_NAME"
+      - name: Signing key is configured
+        env:
+          REPO_SIGNING_KEY: ${{ secrets.REPO_SIGNING_KEY }}
+        run: |
+          if [ -z "$REPO_SIGNING_KEY" ]; then
+            echo "::error::Add the REPO_SIGNING_KEY secret (see the README's Releasing section)"
+            exit 1
+          fi
+
+  deb:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential debhelper
+          dpkg-buildpackage -us -uc -b
+          mkdir dist && mv ../*.deb dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
+
+  arch:
+    needs: check
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install build tools
+        run: pacman -Syu --noconfirm --needed git python
+      - uses: actions/checkout@v4
+      - name: Build from the tag tarball
+        run: scripts/build-arch-package.sh release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: |
+            packaging/arch/*.pkg.tar.zst
+            packaging/arch/PKGBUILD
+            packaging/arch/fan-control.install
+
+  release:
+    needs: [deb, arch]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(cat VERSION)
+          git archive --format=tar.gz --prefix="fan-control-$version/" -o fan-control.tar.gz HEAD
+          cp artifacts/*.deb artifacts/*.pkg.tar.zst .
+          mkdir aur && cp artifacts/PKGBUILD artifacts/fan-control.install aur/
+          sha256sum ./*.deb ./*.pkg.tar.zst fan-control.tar.gz install.sh > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes \
+            ./*.deb ./*.pkg.tar.zst fan-control.tar.gz install.sh SHA256SUMS \
+            aur/PKGBUILD aur/fan-control.install
+
+  apt-repo:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import the signing key
+        env:
+          REPO_SIGNING_KEY: ${{ secrets.REPO_SIGNING_KEY }}
+        run: scripts/import-key.sh
+      - name: Collect every released .deb
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: scripts/download-releases.sh '*.deb' debs
+      - name: Build the repository
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils
+          scripts/build-apt-repo.sh debs site/apt "$SIGNING_KEY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apt-repo
+          path: site
+
+  pacman-repo:
+    needs: release
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git github-cli gnupg
+      - uses: actions/checkout@v4
+      - name: Import the signing key
+        env:
+          REPO_SIGNING_KEY: ${{ secrets.REPO_SIGNING_KEY }}
+        run: scripts/import-key.sh
+      - name: Collect every released package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: scripts/download-releases.sh '*.pkg.tar.zst' pkgs
+      - name: Build the repository
+        run: scripts/build-pacman-repo.sh pkgs site/arch "$SIGNING_KEY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pacman-repo
+          path: site
+
+  pages:
+    needs: [apt-repo, pacman-repo]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-repo'
+          path: site
+          merge-multiple: true
+      - name: Add the key, installer and index page
+        env:
+          REPO_SIGNING_KEY: ${{ secrets.REPO_SIGNING_KEY }}
+        run: |
+          . scripts/import-key.sh
+          gpg --armor --export "$SIGNING_KEY" > site/fan-control.asc
+          cp install.sh site/install.sh
+          sed "s/@VERSION@/$(cat VERSION)/" packaging/pages/index.html > site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

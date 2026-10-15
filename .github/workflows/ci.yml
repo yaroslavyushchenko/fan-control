@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ruff
+        run: pipx install ruff
+      - name: Lint
+        run: make lint
+      - name: Unit tests
+        run: make test
+      - name: Installer dry runs
+        run: |
+          echo "Predator PH315-51" > "$RUNNER_TEMP/dmi"
+          for method in apt pacman source; do
+            FANCTL_DMI_PATH="$RUNNER_TEMP/dmi" sh install.sh --dry-run --method "$method"
+          done
+          if FANCTL_DMI_PATH=/dev/null sh install.sh --dry-run; then
+            echo "::error::install.sh accepted an unsupported model"
+            exit 1
+          fi
+
+  versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: VERSION matches debian/changelog
+        run: scripts/check-version.sh
+
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential debhelper lintian
+      - name: Build
+        run: dpkg-buildpackage -us -uc -b
+      - name: Lintian
+        run: lintian --fail-on error --suppress-tags bad-distribution-in-changes-file ../*.changes
+      - name: Collect
+        run: mkdir dist && mv ../*.deb dist/
+      - name: Install through install.sh and a signed APT repo, then uninstall
+        run: sudo scripts/e2e-install.sh apt dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
+
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install build tools
+        run: pacman -Syu --noconfirm --needed git python namcap
+      - uses: actions/checkout@v4
+      - name: Build from this commit
+        run: scripts/build-arch-package.sh local
+      - name: namcap
+        run: namcap packaging/arch/*.pkg.tar.zst
+      - name: Install through install.sh and a signed pacman repo, then uninstall
+        run: |
+          pacman-key --init
+          scripts/e2e-install.sh pacman packaging/arch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: packaging/arch/*.pkg.tar.zst

@@ -1,35 +1,83 @@
 #!/usr/bin/env python3
 """Unprivileged client for fanctld. Talks to the daemon over its Unix
-socket; no root or sudo required for the calling user."""
+socket; members of the fanctl group need no root or sudo."""
 
+import argparse
 import json
+import os
 import socket
 import sys
 
-SOCK_PATH = "/run/fanctld.sock"
+VERSION = "@VERSION@"
+
+SOCK_PATH = os.environ.get("FANCTLD_SOCKET", "/run/fanctld.sock")
 COMMANDS = ("status", "full", "auto")
+TIMEOUT = 5
+
+EXIT_OK = 0
+EXIT_ERROR = 1
+EXIT_UNREACHABLE = 2
+EXIT_USAGE = 64
 
 
-def main():
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
-    if cmd not in COMMANDS:
-        print(f"usage: {sys.argv[0]} [{'|'.join(COMMANDS)}]", file=sys.stderr)
-        return 1
+def version():
+    return "dev" if VERSION.startswith("@") else VERSION
+
+
+def request(command):
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.settimeout(TIMEOUT)
+        s.connect(SOCK_PATH)
+        s.sendall((command + "\n").encode())
+        data = b""
+        while not data.endswith(b"\n"):
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+    return json.loads(data.decode())
+
+
+def fail(message, code):
+    print(json.dumps({"ok": False, "error": message}))
+    print(f"fanctl: {message}", file=sys.stderr)
+    return code
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="fanctl",
+        description="Switch the Acer Predator PH315-51 fans between the "
+        "vendor curve (auto) and maximum speed (full). Prints one line of JSON.",
+    )
+    parser.add_argument("command", nargs="?", default="status", choices=COMMANDS)
+    parser.add_argument("--version", action="version", version=f"%(prog)s {version()}")
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as e:
+        return EXIT_USAGE if e.code else EXIT_OK
 
     try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.connect(SOCK_PATH)
-            s.sendall((cmd + "\n").encode())
-            resp = s.recv(4096).decode()
+        response = request(args.command)
     except (FileNotFoundError, ConnectionRefusedError):
-        print(f"fanctld is not running (no socket at {SOCK_PATH})", file=sys.stderr)
-        return 1
+        return fail(
+            f"fanctld is not running (no socket at {SOCK_PATH}); "
+            "try 'sudo systemctl enable --now fanctld.socket'",
+            EXIT_UNREACHABLE,
+        )
     except PermissionError:
-        print(f"permission denied connecting to {SOCK_PATH}", file=sys.stderr)
-        return 1
+        return fail(
+            f"permission denied on {SOCK_PATH}; add yourself to the fanctl group "
+            "('sudo usermod -aG fanctl $USER') and log in again",
+            EXIT_UNREACHABLE,
+        )
+    except TimeoutError:
+        return fail("fanctld did not answer in time", EXIT_UNREACHABLE)
+    except (OSError, ValueError) as e:
+        return fail(f"bad reply from fanctld: {e}", EXIT_ERROR)
 
-    print(resp.strip())
-    return 0 if json.loads(resp).get("ok") else 1
+    print(json.dumps(response))
+    return EXIT_OK if response.get("ok") else EXIT_ERROR
 
 
 if __name__ == "__main__":
